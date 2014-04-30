@@ -1,15 +1,13 @@
 require('co-mocha');
 
 var expect = require('expect.js'),
-    validators = require('../');
+    validators = require('../'),
+    moko = require('moko');
+
+moko.use(validators);
 
 describe('Moko validators', function() {
   var User;
-  before(function() {
-    moko = require('moko');
-    moko.use(validators);
-  });
-
   describe('basic validations', function() {
     describe('required', function() {
       before(function() {
@@ -71,6 +69,58 @@ describe('Moko validators', function() {
           expect(yield user.isValid()).to.be(false);
           expect(user.errors('name')).to.eql(['must be type string']);
           user.name = 'Bob';
+          expect(yield user.isValid()).to.be(true);
+        });
+      });
+    });
+
+    describe('format', function() {
+      describe('regex', function() {
+        var User;
+
+        it('adds an error if it does not match the regex', function*() {
+          User = moko('User').attr('name', {format: /\w+ \w+/});
+          var user = yield new User({name: 'sam'});
+          expect(yield user.isValid()).to.be(false);
+          expect(user.errors('name')).to.eql(['does not match format']);
+          user.name = 'Bob Smith';
+          expect(yield user.isValid()).to.be(true);
+        });
+      });
+      describe('built in', function() {
+        it('works with phone', function*() {
+          User = moko('User').attr('phone', {format: 'phone'});
+          var user = yield new User({phone: 'sam'});
+          expect(yield user.isValid()).to.be(false);
+          expect(user.errors('phone')).to.eql(['is not a valid phone number']);
+          user.phone = '(555) 555-3123';
+          expect(yield user.isValid()).to.be(true);
+        });
+
+        it('works with url', function*() {
+          User = moko('User').attr('homePage', {format: 'url'});
+          var user = yield new User({homePage: 'sam'});
+          expect(yield user.isValid()).to.be(false);
+          expect(user.errors('homePage')).to.eql(['is not a valid url']);
+          user.homePage = 'http://google.com';
+          expect(yield user.isValid()).to.be(true);
+        });
+
+        it('works with email', function*() {
+          User = moko('User').attr('email', {format: 'email'});
+          var user = yield new User({email: 'sam'});
+          expect(yield user.isValid()).to.be(false);
+          expect(user.errors('email')).to.eql(['is not a valid email']);
+          user.email = 'sam@google.com';
+          expect(yield user.isValid()).to.be(true);
+        });
+
+        it('works with creditcard', function*() {
+          User = moko('User').attr('cc', {format: 'creditcard'});
+          var user = yield new User({cc: 'sam'});
+          expect(yield user.isValid()).to.be(false);
+          expect(user.errors('cc')).to.eql(['is not a valid credit card number']);
+          user.cc = '378282246310005';
           expect(yield user.isValid()).to.be(true);
         });
       });
